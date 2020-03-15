@@ -1,0 +1,12 @@
+{
+  "ID": "ae8de21b32ed46b8914b451b1be14f1d",
+  "ActionKeyword": "bh",
+  "Name": "Browser History",
+  "Description": "Search browser browsing histories",
+  "Author": "liuconen",
+  "Version": "1.0.0",
+  "Language": "python",
+  "Website": "https://github.com/liuconen/Wox.Plugin.BrowserHistory",
+  "IcoPath": "Images\\pic.png",
+  "ExecuteFileName": "main.py"
+}
