@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import subprocess
+import time
 from shutil import copyfile
 
 
@@ -14,18 +15,25 @@ def is_browser_process_running(browser_process_name: str) -> bool:
     return False
 
 
-def copy_database_if_locked(database_paths: dict) -> dict:
+def sync_database_if_necessary(database_paths: dict, force: bool) -> dict:
     """
     when the browser is running, it's history database will be locked.
+    so we get a copy as cache.
     """
     for (browser, database_path) in database_paths.items():
-        if is_browser_process_running(browser):
-            local_database_file_name = f"{browser}_history"
-            if os.path.exists(local_database_file_name):
-                os.remove(local_database_file_name)
-            local_path = f"cache/{local_database_file_name}"
-            copyfile(database_path, local_path)
-            database_paths[browser] = local_path
+        cached_database = f"cache/{browser}_history"
+        if os.path.exists(cached_database):
+            if time.time() - os.path.getctime(cached_database) >= 60 * 60 * 6:
+                force = True
+            if force:
+                os.remove(cached_database)
+        else:
+            force = True
+
+        if force:
+            copyfile(database_path, cached_database)
+
+        database_paths[browser] = cached_database
     return database_paths
 
 
@@ -47,26 +55,17 @@ def get_database_paths() -> dict:
     return browser_path_dict
 
 
-def get_browserhistory() -> dict:
+def get_browserhistory(refresh_database: bool = False) -> dict:
     """Get the user's browsers history by using sqlite3 module to connect to the dabases.
        It returns a dictionary: its key is a name of browser in str and its value is a list of
-       tuples, each tuple contains four elements, including url, title, and visited_time. 
-
-       Example
-       -------
-       >>> from libs import browserhistory as bh
-       >>> dict_obj = bh.get_browserhistory()
-       >>> dict_obj.keys()
-       >>> dict_keys(['safari', 'chrome', 'firefox'])
-       >>> dict_obj['safari'][0]
-       >>> ('https://mail.google.com', 'Mail', '2018-08-14 08:27:26')
+       tuples, each tuple contains four elements, including url, title, and visited_time.
     """
     # browserhistory is a dictionary that stores the query results based on the name of browsers.
     browserhistory = {}
 
     # call get_database_paths() to get database paths.
     paths2databases = get_database_paths()
-    paths2databases = copy_database_if_locked(paths2databases)
+    paths2databases = sync_database_if_necessary(paths2databases, refresh_database)
 
     for browser, path in paths2databases.items():
         try:
